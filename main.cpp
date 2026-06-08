@@ -89,11 +89,6 @@ static GLuint CompileShader(GLenum type, const std::string &src)
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
     if (!ok)
     {
-        GLint len = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-        std::string log(len, ' ');
-        glGetShaderInfoLog(shader, len, nullptr, &log[0]);
-        std::cerr << "Shader compile error: " << log << std::endl;
         exit(1);
     }
     return shader;
@@ -111,11 +106,6 @@ static GLuint LinkProgram(GLuint vs, GLuint fs)
     glGetProgramiv(prog, GL_LINK_STATUS, &ok);
     if (!ok)
     {
-        GLint len = 0;
-        glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &len);
-        std::string log(len, ' ');
-        glGetProgramInfoLog(prog, len, nullptr, &log[0]);
-        std::cerr << "Program link error: " << log << std::endl;
         exit(1);
     }
     return prog;
@@ -213,14 +203,14 @@ void init(int argc, char *argv[])
     std::string vsSrc = LoadFileToString("shader.vert");
     if (vsSrc.empty())
     {
-        std::cerr << "Failed to load shader.vert - make sure it exists in the executable directory." << std::endl;
+        std::cerr << "Failed to load shader.vert." << std::endl;
         exit(1);
     }
 
     std::string fsSrc = LoadFileToString("shader.frag");
     if (fsSrc.empty())
     {
-        std::cerr << "Failed to load shader.frag - make sure it exists in the executable directory." << std::endl;
+        std::cerr << "Failed to load shader.frag." << std::endl;
         exit(1);
     }
 
