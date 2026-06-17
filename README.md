@@ -3,6 +3,8 @@ Francesco virgili
 Informatica Grafica [2526-3-E3101Q134] 
 Consegna il 18/06/2026
 
+ShaderToy: https://www.shadertoy.com/view/NXjGRd
+
 Requisiti (Linux, Debian/Ubuntu):
 - build-essential
 - libglew-dev
