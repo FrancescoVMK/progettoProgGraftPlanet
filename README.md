@@ -1,6 +1,7 @@
-# Progetto: Graft Planet (shader-based)
-
-Breve README per compilare e usare il programma nel repository.
+# Progetto informatica grafica: Ray marched planet
+Francesco virgili
+Informatica Grafica [2526-3-E3101Q134] 
+Consegna il 18/06/2026
 
 Requisiti (Linux, Debian/Ubuntu):
 - build-essential
@@ -32,14 +33,4 @@ Esecuzione:
 ```bash
 ./planet
 ```
-- Nota: nel repository potrebbe esserci un eseguibile Windows (`test_code.exe`). Non eseguirlo su Linux.
 
-Debug / problemi comuni:
-- "Impossibile trovare GLEW/freeglut": installare i pacchetti di sviluppo (vedi requisiti).
-- Errori di linking: verifica l'ordine delle librerie e che le versioni di dev-packages siano installate.
-- Se il programma non carica gli shader, controlla i percorsi relativi e i nomi dei file (`shader.vert`, `shader.frag`).
-
-Contatti:
-- Per modifiche al codice shader, il file principale è `shader.frag`.
-
-Fine.
