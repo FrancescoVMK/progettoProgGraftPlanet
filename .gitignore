@@ -1,0 +1,15 @@
+# Compiled object files
+*.o
+# Executables
+*.exe
+# Common build output
+/build/
+# Local binaries
+planet
+# Windows DLLs
+*.dll
+# Shader cache / compiled shaders
+*.spv
+# Temporary files
+*.tmp
+*.log
