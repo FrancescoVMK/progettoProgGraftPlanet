@@ -1,14 +1,5 @@
 #version 330 core
 
-out vec4 FragColor;
-
-uniform vec2 iResolution;
-uniform float iTime;
-uniform vec4 iMouse;
-
-
-
-
 //CONSTANTS
 const float MAX_DIST = 25.0;
 const float MIN_DIST = 0.0035;
@@ -26,15 +17,14 @@ struct Point {
 
 vec2 rot2D(vec2 p, float a) {
   float c = cos(a), s = sin(a);
+  // Formula: R(a) * p = [cos(a) -sin(a); sin(a) cos(a)] * [p.x; p.y]
   return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
 }
-
-
-
 
 // noise generation //taken from https://www.shadertoy.com/view/Msf3WH
 /* discontinuous pseudorandom uniformly distributed in [-0.5, +0.5]^3 */
 vec3 random3(vec3 c) {
+  // Formula: j = 4096.0 * sin(c · [17.0, 59.4, 15.0])
   float j = 4096.0 * sin(dot(c, vec3(17.0, 59.4, 15.0)));
   vec3 r;
   r.z = fract(512.0 * j);
@@ -52,11 +42,10 @@ const float G3 = 0.1666667;
 /* 3d simplex noise */
 float simplex3d(vec3 p) {
   /* 1. find current tetrahedron T and it's four vertices */
-  /* s, s+i1, s+i2, s+1.0 - absolute skewed (integer) coordinates of T vertices */
-  /* x, x1, x2, x3 - unskewed coordinates of p relative to each of T vertices*/
-
-  /* calculate s and x */
+  
+  // Formula: s = floor(p + (p.x + p.y + p.z) * F3)
   vec3 s = floor(p + dot(p, vec3(F3)));
+  // Formula: x = p - s + (s.x + s.y + s.z) * G3
   vec3 x = p - s + dot(s, vec3(G3));
 
   /* calculate i1 and i2 */
@@ -73,6 +62,7 @@ float simplex3d(vec3 p) {
   vec4 w, d;
 
   /* calculate surflet weights */
+  // Formulas: w.wxyz = |x|^2, |x1|^2, |x2|^2, |x3|^2
   w.x = dot(x, x);
   w.y = dot(x1, x1);
   w.z = dot(x2, x2);
@@ -82,6 +72,7 @@ float simplex3d(vec3 p) {
   w = max(0.6 - w, 0.0);
 
   /* calculate surflet components */
+  // Formulas: d.wxyz = random3(s) · x, etc.
   d.x = dot(random3(s), x);
   d.y = dot(random3(s + i1), x1);
   d.z = dot(random3(s + i2), x2);
@@ -93,6 +84,7 @@ float simplex3d(vec3 p) {
   d *= w;
 
   /* 3. return the sum of the four surflets */
+  // Formula: result = d · [52.0, 52.0, 52.0, 52.0]
   return dot(d, vec4(52.0));
 }
 
@@ -103,6 +95,7 @@ const mat3 rot3 = mat3(-0.71, 0.52, -0.47, -0.08, -0.72, -0.68, -0.7, -0.45, 0.5
 
 /* directional artifacts can be reduced by rotating each octave */
 float simplex3d_fractal(vec3 m) {
+  // Formula: Matrix-vector multiplications (rot * m)
   return 0.53 * simplex3d(m * rot1) +
     0.27 * simplex3d(2.0 * m * rot2) +
     0.13 * simplex3d(4.0 * m * rot3) +
@@ -123,6 +116,7 @@ vec4 getPlanetColor(vec3 n, float noise) {
   vec3 c0 = colorMap[0];
   c0.b -= simplex3d_fractal((n + vec3(0., cos(iTime * 0.1), sin(iTime * 0.1))) * 3.5);
 
+  // Formula: mix(a, b, w) = a * (1 - w) + b * w
   vec3 c = mix(c0, colorMap[1], smoothstep(0.0, 0.23, t));
   c = mix(c, colorMap[2], smoothstep(0.14, 0.26, t));
   c = mix(c, colorMap[3], smoothstep(0.66, 1.0, t));
@@ -133,11 +127,9 @@ vec4 getPlanetColor(vec3 n, float noise) {
 
 Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
-  // n must be normalized
-
-  //vec3 sp = p - center;
-
+  // Formula: translation = p - center
   p -= center;
+  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -148,30 +140,24 @@ Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 
   p.xz = rot2D(p.xz, rotation.y);
   p.xy = rot2D(p.xy, rotation.z);
 
-  p += pivot; //apply pivot
+  p += pivot; 
   lenP = length(p);
 
+  // Formula: normalize = p / sqrt(p.x^2 + p.y^2 + p.z^2)
   vec3 n = normalize(p);
 
   float noise = 0.0;
 
   if (g_viewDist > 12.) {
-    // cheap LOD: single low-cost octave
     noise = simplex3d(n * 1.5) * 0.3;
     noise *= noise;
   } else {
     noise = simplex3d(n * 1.5) * 0.3;
-
     noise *= noise;
-
     noise += simplex3d_fractal(n) * 0.2;
-
     noise += simplex3d_fractal(n * 6.) * 0.04;
   }
   
-  
-
-
   color = getPlanetColor(n, noise);
 
   float displacement = noise + 1.;
@@ -185,12 +171,8 @@ Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 
 
 Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
-  // n must be normalized
-
-  //vec3 sp = p - center;
-
   p -= center;
-
+  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -201,9 +183,10 @@ Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, 
   p.xz = rot2D(p.xz, rotation.y);
   p.xy = rot2D(p.xy, rotation.z);
 
-  p += pivot; //apply pivot
+  p += pivot; 
 
   lenP = length(p);
+  // Formula: normalize = p / length(p)
   vec3 n = normalize(p);
 
   float noise = 0.;
@@ -211,9 +194,7 @@ Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, 
   if (g_viewDist > 12.) {
 
   } else {
-
     noise = simplex3d_fractal(n * 4.5 + iTime * 0.1) * 0.5;
-
   }
 
   color = vec4(1., 1., 1., noise * 2.5 + 0.5);
@@ -230,11 +211,8 @@ Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, 
 
 Point moon(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
-  // n must be normalized
-
-  //vec3 sp = p - center;
-
   p -= center;
+  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -245,22 +223,18 @@ Point moon(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pi
   p.xz = rot2D(p.xz, rotation.y);
   p.xy = rot2D(p.xy, rotation.z);
 
-  p += pivot; //apply pivot
+  p += pivot; 
   lenP = length(p);
+  // Formula: normalize = p / length(p)
   vec3 n = normalize(p);
   float noise = 0.0;
   if (g_viewDist > 12.) {
-    // cheap LOD: single low-cost octave
     noise = simplex3d(n * 1.5) * 0.3;
     noise *= noise;
   } else {
-
     noise = simplex3d(n * 1.5) * 0.2;
-
     noise *= noise;
-
     noise += simplex3d_fractal(n * 2.5) * 0.1;
-
   }
 
   float displacement = noise + 1.;
@@ -274,11 +248,9 @@ Point moon(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pi
 
 Point sdfSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
-  // n must be normalized
+  p = p - center; 
 
-  p = p - center; //center
-
-  //rotation matrix
+  // Matrix construction and vector transformation
   mat2 rotX = mat2(cos(rotation.x), -sin(rotation.x),
     sin(rotation.x), cos(rotation.x));
   vec2 yz = rotX * p.yz;
@@ -297,8 +269,9 @@ Point sdfSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, ve
   p.x = xy.x;
   p.y = xy.y;
 
-  p += pivot; //apply pivot
+  p += pivot; 
 
+  // Formula: SDF Sphere = |p| - r
   Point res = Point(length(p) - radius, color, currentId);
 
   return res;
@@ -307,11 +280,8 @@ Point sdfSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, ve
 //functions
 
 Point sdfUnion(Point d1, Point d2) {
-
   if (d1.dist <= d2.dist) return d1;
-
   return d2;
-
 }
 
 const float tilt = 0.5;
@@ -322,7 +292,6 @@ const mat2 rotX = mat2(
 );
 
 Point map(vec3 p, int jumpShape, bool skipTrasparent) {
-  //p = vec3(sin(p.x * 0.5), p.y, cos(p.z * 0.5));
   int shapeIndex = 1;
 
   Point obj;
@@ -331,26 +300,26 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
     vec3(0.0, 0.0, 0.0),
     2.4,
     vec4(1.000, 1.000, 1.000, 1.0),
-    //rotate
-    vec3(0.12, iTime * 0.25, 0.), //rotation
-    vec3(0., 0., 0.), //pivot
+    vec3(0.12, iTime * 0.25, 0.), 
+    vec3(0., 0., 0.), 
 
     shapeIndex
   );
 
   shapeIndex++;
   //stars
+  // Formula: distance = sqrt((p.x-0)^2 + (p.y-0)^2 + (p.z-0)^2)
   if (distance(p, vec3(0.0)) >= 14.) {
 
+    // Formula: mod(p, 2.0) - 1.0 = (p - 2.0 * floor(p / 2.0)) - 1.0
     vec3 repeted = mod(p, 2.0) - 1.0;
 
     obj = sdfSphere(repeted,
       vec3(0.0, 0.0, 0.0),
       0.02,
       vec4(2.000, 2.000, 2.000, 1.0),
-      //rotate
-      vec3(0., 0., 0.), //rotation
-      vec3(0., 0., 0.), //pivot
+      vec3(0., 0., 0.), 
+      vec3(0., 0., 0.), 
 
       shapeIndex
     );
@@ -358,28 +327,26 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
     shapeIndex = obj.shapeId;
 
     m = sdfUnion(obj, m);
-
   }
 
   float a = iTime * 0.2;
 
   vec3 moon1Pos = vec3(cos(a + 0.0) * r, 0.0, sin(a + 0.0) * r);
 
+  // Formula: 2D Matrix-Vector Product
   moon1Pos.yz = rotX * moon1Pos.yz;
 
   obj = moon(p,
     moon1Pos,
     0.4,
     vec4(1.000, 1.000, 1.000, 1.0),
-    //rotate
-    vec3(0., -a, 0.), //rotation
-    vec3(0., 0., 0.), //pivot
+    vec3(0., -a, 0.), 
+    vec3(0., 0., 0.), 
 
     shapeIndex
   );
 
   m = sdfUnion(obj, m);
-  //m.dist = tan(m.dist * 1.);
   shapeIndex++;
 
   //Clouds 
@@ -388,9 +355,8 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
       vec3(0.0, 0.0, 0.0),
       2.6,
       vec4(1.000, 1.000, 1.000, 0.5),
-      //rotate
-      vec3(0.32, iTime * 0.2, 0.), //rotation
-      vec3(0., 0., 0.), //pivot
+      vec3(0.32, iTime * 0.2, 0.), 
+      vec3(0., 0., 0.), 
 
       shapeIndex
     );
@@ -404,6 +370,7 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
 vec3 getNormal(vec3 p) {
   float d = map(p, -1, false).dist;
   vec2 e = vec2(0.001, 0.0);
+  // Formula: Numerical Gradient Vector = normalize([df/dx, df/dy, df/dz])
   return normalize(vec3(
     map(p + e.xyy, -1, false).dist - d,
     map(p + e.yxy, -1, false).dist - d,
@@ -424,6 +391,7 @@ Point rayMarch(vec3 ro, vec3 rd, float maxDist) {
   while (dist < maxDist && i < 30) {
     i++;
     g_viewDist = dist;
+    // Formula: Ray equation integration P = ro + rd * dist
     p = map(ro + rd * dist, jShapes, false);
     if (p.dist <= MIN_DIST) {
       if (p.color.w >= 1.0) {
@@ -432,31 +400,22 @@ Point rayMarch(vec3 ro, vec3 rd, float maxDist) {
           oldP.color = p.color;
           oldP.shapeId = p.shapeId;
         } else {
-          p.color = mix(p.color, oldP.color, oldP.color.w);
-          oldP.color = p.color;
+          oldP.color = mix(p.color, oldP.color, oldP.color.w);
         }
-
         break;
       } else {
         p.color = mix(oldP.color, p.color, p.color.w);
         oldP.color = p.color;
         if (oldP.dist >= MAX_DIST) {
           oldP.dist = dist;
-
           oldP.shapeId = p.shapeId;
         }
-
         jShapes = p.shapeId;
-
       }
-
     }
-
     dist += p.dist;
   }
-
   return oldP;
-
 }
 
 Point rayMarchShadow(vec3 ro, vec3 rd, float maxDist, int currentShapeId) {
@@ -464,6 +423,7 @@ Point rayMarchShadow(vec3 ro, vec3 rd, float maxDist, int currentShapeId) {
   float t = 0.1;
 
   for (int i = 0; i < 30 && t < maxDist; i++) {
+    // Formula: Position evaluation along shadow ray = ro + rd * t
     Point h = map(ro + rd * t, currentShapeId, true);
 
     if (h.dist < MIN_DIST)
@@ -482,33 +442,35 @@ Point rayMarchShadow(vec3 ro, vec3 rd, float maxDist, int currentShapeId) {
 }
 
 void camera(vec2 uv, out vec3 ro, out vec3 rd) {
-  // camera from https://www.shadertoy.com/view/XsXXDB
   vec3 ta = vec3(0.0, 0.0, 0.0);
-
   vec2 m = iMouse.xy / iResolution.xy;
 
-  // If mouse has never been clicked, give it a default fallback position
   if (iMouse.z <= 0.0) {
     m = vec2(0.5, 0.5);
   }
 
-  float hd = -m.x * 14.0 + 3.14159;
-  float elv = m.y * 3.14159 * 0.4 - 3.14159 * 0.25;
+  float hd = -m.x * 14.0 + pi;
+  float elv = m.y * pi * 0.4 - pi * 0.25;
+  
+  // Formula: Spherical Coordinates to Cartesian coordinates Conversion
   ro = vec3(sin(hd) * cos(elv), sin(elv), cos(hd) * cos(elv));
   ro = ro * 8.0 + vec3(0.0, 6.0, 0.0);
 
-  // camera tx
+  // Camera coordinate system building
+  // Formula: cw = normalize(target - rayOrigin)
   vec3 cw = normalize(ta - ro);
-
   vec3 cp = vec3(0.0, 1.0, 0.0);
 
+  // Formula: cu = cross(cw, cp) = [cw.y*cp.z - cw.z*cp.y, cw.z*cp.x - cw.x*cp.z, cw.x*cp.y - cw.y*cp.x]
   vec3 cu = normalize(cross(cw, cp));
+  // Formula: cv = cross(cu, cw)
   vec3 cv = normalize(cross(cu, cw));
+  
+  // Formula: Ray direction projection matrix calculation
   rd = normalize(uv.x * cu + uv.y * cv + 2.5 * cw);
 }
 
 vec3 render(vec2 uv) {
-
   vec3 ro;
   vec3 rd;
   vec3 color;
@@ -518,62 +480,52 @@ vec3 render(vec2 uv) {
   Point p = rayMarch(ro, rd, MAX_DIST);
 
   if (p.dist < MAX_DIST ) {
-    //color = vec3(1.0);
-
-    //normals
-    vec3 pos = ro + rd * (p.dist); //get point wher you need to calculate the normals
+    // Formula: Surface Position Vector = ro + rd * distance
+    vec3 pos = ro + rd * (p.dist); 
     vec4 baseColor = p.color;
     vec3 normal = getNormal(pos);
 
     //lighting
-
-    //ambient
     vec3 ambient = vec3(1.000, 1.000, 1.000);
-
-    //diffuse
     vec3 lightColor = vec3(1.000, 1.000, 0.900);
-
-    float angle = (iTime) * pi * 0.4;
     vec3 lightSource = vec3(7., 3.7, 7.);
+    
+    // Formula: lightDir = normalize(lightSource - position)
+    vec3 lightDir = normalize(lightSource - pos);
 
-    float diffuseStrength = max(0.0, dot(normalize(lightSource - pos), normal));
-
+    // Formula: Diffuse factor = max(normal · lightDir, 0.0)
+    float diffuseStrength = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = lightColor * diffuseStrength;
 
     //specular
     lightColor = vec3(1.000, 1.000, 1.000);
-
-    vec3 viewSource = normalize(ro);
-    vec3 reflectSource = normalize(reflect(-lightSource, normal));
-    float specularStrength = max(0.0, dot(viewSource, reflectSource));
-    specularStrength = pow(specularStrength, 64.0);
+   
+    // Formula: viewDir = normalize(rayOrigin - position)
+    vec3 viewDir  = normalize(ro - pos);
+    // Formula: halfwayDir = normalize(lightDir + viewDir)
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    
+    // Formula: Blinn-Phong Specular component = (normal · halfwayDir)^shininess
+    float specularStrength = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
     vec3 specular = specularStrength * lightColor;
 
-    vec3 lighting = ambient * 0.3 + (diffuse + (1. - p.color.w)) * 0.90 + specular * 0.1;
-
+    vec3 lighting = ambient * 0.3 + (diffuse + (1. - p.color.w)) * 0.90 + specular * 0.2;
     color = baseColor.rgb * lighting;
 
     //shadows
-    vec3 lightDirection = normalize(lightSource - pos);
+    // Formula: Distance between vectors = sqrt(|lightSource - pos|^2)
     float distToLightSource = length(lightSource - pos);
 
+    // Formula: Ray bias offset to avoid surface self-intersection = position + normal * bias
     ro = pos + normal * 0.3;
-    rd = lightDirection;
+    rd = lightDir;
     Point pointShadow = rayMarchShadow(ro, rd, distToLightSource, p.shapeId);
 
     color = mix(pointShadow.color.rgb * pointShadow.color[3], color * pointShadow.dist, pointShadow.color[3]).rgb;
-    //float shadowStrength = pointShadow.color.w;
-    //float shadowFactor = mix(1.0, min(pointShadow.dist, 1.0), shadowStrength);
 
-    //color *= shadowFactor;
-
-    //color *= rayMarchShadow( ro, rd, 0.01, 3.0, 0.1, 1 );
-
-    //gamma correction
+    // Gamma correction
+    // Formula: color = color ^ (1.0 / 2.2)
     color = pow(color, vec3(1.0 / 2.2));
-
-    // Tone mapping
-    //color = 1.-exp(-2.*color);
 
   } else {
     color = p.color.rgb;
@@ -582,19 +534,16 @@ vec3 render(vec2 uv) {
   return color;
 }
 
-
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-  //a Clculate aspect ratio
   float aspectRatio = iResolution.x / iResolution.y;
 
-  // Normalized pixel coordinates (from 0 to 1)
+  // Formula: Normalize coordinates mapping screen coordinates [0, Res] to [-1, 1]
   vec2 uv = 2.0 * fragCoord / iResolution.xy - 1.0;
 
-  // Correct for aspect ratio
+  // Formula: Aspect adjustment = coordinate.x * (width / height)
   uv.x *= aspectRatio;
 
   vec3 color = vec3(0.0);
-
   color = render(uv);
   fragColor = vec4(color, 1.0);
 }
