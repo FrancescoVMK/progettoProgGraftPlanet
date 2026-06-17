@@ -13,18 +13,24 @@ struct Point {
   int shapeId;
 };
 
+// Uniforms from Shadertoy-like environment
+uniform float iTime;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+// Fragment output
+out vec4 FragColor;
+
 //random
 
 vec2 rot2D(vec2 p, float a) {
   float c = cos(a), s = sin(a);
-  // Formula: R(a) * p = [cos(a) -sin(a); sin(a) cos(a)] * [p.x; p.y]
   return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
 }
 
 // noise generation //taken from https://www.shadertoy.com/view/Msf3WH
 /* discontinuous pseudorandom uniformly distributed in [-0.5, +0.5]^3 */
 vec3 random3(vec3 c) {
-  // Formula: j = 4096.0 * sin(c · [17.0, 59.4, 15.0])
   float j = 4096.0 * sin(dot(c, vec3(17.0, 59.4, 15.0)));
   vec3 r;
   r.z = fract(512.0 * j);
@@ -43,9 +49,7 @@ const float G3 = 0.1666667;
 float simplex3d(vec3 p) {
   /* 1. find current tetrahedron T and it's four vertices */
   
-  // Formula: s = floor(p + (p.x + p.y + p.z) * F3)
   vec3 s = floor(p + dot(p, vec3(F3)));
-  // Formula: x = p - s + (s.x + s.y + s.z) * G3
   vec3 x = p - s + dot(s, vec3(G3));
 
   /* calculate i1 and i2 */
@@ -62,7 +66,6 @@ float simplex3d(vec3 p) {
   vec4 w, d;
 
   /* calculate surflet weights */
-  // Formulas: w.wxyz = |x|^2, |x1|^2, |x2|^2, |x3|^2
   w.x = dot(x, x);
   w.y = dot(x1, x1);
   w.z = dot(x2, x2);
@@ -72,7 +75,6 @@ float simplex3d(vec3 p) {
   w = max(0.6 - w, 0.0);
 
   /* calculate surflet components */
-  // Formulas: d.wxyz = random3(s) · x, etc.
   d.x = dot(random3(s), x);
   d.y = dot(random3(s + i1), x1);
   d.z = dot(random3(s + i2), x2);
@@ -84,7 +86,6 @@ float simplex3d(vec3 p) {
   d *= w;
 
   /* 3. return the sum of the four surflets */
-  // Formula: result = d · [52.0, 52.0, 52.0, 52.0]
   return dot(d, vec4(52.0));
 }
 
@@ -95,7 +96,6 @@ const mat3 rot3 = mat3(-0.71, 0.52, -0.47, -0.08, -0.72, -0.68, -0.7, -0.45, 0.5
 
 /* directional artifacts can be reduced by rotating each octave */
 float simplex3d_fractal(vec3 m) {
-  // Formula: Matrix-vector multiplications (rot * m)
   return 0.53 * simplex3d(m * rot1) +
     0.27 * simplex3d(2.0 * m * rot2) +
     0.13 * simplex3d(4.0 * m * rot3) +
@@ -116,7 +116,6 @@ vec4 getPlanetColor(vec3 n, float noise) {
   vec3 c0 = colorMap[0];
   c0.b -= simplex3d_fractal((n + vec3(0., cos(iTime * 0.1), sin(iTime * 0.1))) * 3.5);
 
-  // Formula: mix(a, b, w) = a * (1 - w) + b * w
   vec3 c = mix(c0, colorMap[1], smoothstep(0.0, 0.23, t));
   c = mix(c, colorMap[2], smoothstep(0.14, 0.26, t));
   c = mix(c, colorMap[3], smoothstep(0.66, 1.0, t));
@@ -127,9 +126,7 @@ vec4 getPlanetColor(vec3 n, float noise) {
 
 Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
-  // Formula: translation = p - center
   p -= center;
-  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -143,7 +140,6 @@ Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 
   p += pivot; 
   lenP = length(p);
 
-  // Formula: normalize = p / sqrt(p.x^2 + p.y^2 + p.z^2)
   vec3 n = normalize(p);
 
   float noise = 0.0;
@@ -172,7 +168,6 @@ Point planet(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 
 Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
   p -= center;
-  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -186,7 +181,6 @@ Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, 
   p += pivot; 
 
   lenP = length(p);
-  // Formula: normalize = p / length(p)
   vec3 n = normalize(p);
 
   float noise = 0.;
@@ -212,7 +206,6 @@ Point cloudSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, 
 Point moon(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pivot, int currentId) {
 
   p -= center;
-  // Formula: length = sqrt(p.x^2 + p.y^2 + p.z^2)
   float lenP = length(p);
 
   if (lenP > radius + 1.44) {
@@ -225,7 +218,6 @@ Point moon(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, vec3 pi
 
   p += pivot; 
   lenP = length(p);
-  // Formula: normalize = p / length(p)
   vec3 n = normalize(p);
   float noise = 0.0;
   if (g_viewDist > 12.) {
@@ -271,7 +263,6 @@ Point sdfSphere(vec3 p, vec3 center, float radius, vec4 color, vec3 rotation, ve
 
   p += pivot; 
 
-  // Formula: SDF Sphere = |p| - r
   Point res = Point(length(p) - radius, color, currentId);
 
   return res;
@@ -308,10 +299,8 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
 
   shapeIndex++;
   //stars
-  // Formula: distance = sqrt((p.x-0)^2 + (p.y-0)^2 + (p.z-0)^2)
   if (distance(p, vec3(0.0)) >= 14.) {
 
-    // Formula: mod(p, 2.0) - 1.0 = (p - 2.0 * floor(p / 2.0)) - 1.0
     vec3 repeted = mod(p, 2.0) - 1.0;
 
     obj = sdfSphere(repeted,
@@ -333,7 +322,6 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
 
   vec3 moon1Pos = vec3(cos(a + 0.0) * r, 0.0, sin(a + 0.0) * r);
 
-  // Formula: 2D Matrix-Vector Product
   moon1Pos.yz = rotX * moon1Pos.yz;
 
   obj = moon(p,
@@ -370,7 +358,6 @@ Point map(vec3 p, int jumpShape, bool skipTrasparent) {
 vec3 getNormal(vec3 p) {
   float d = map(p, -1, false).dist;
   vec2 e = vec2(0.001, 0.0);
-  // Formula: Numerical Gradient Vector = normalize([df/dx, df/dy, df/dz])
   return normalize(vec3(
     map(p + e.xyy, -1, false).dist - d,
     map(p + e.yxy, -1, false).dist - d,
@@ -391,7 +378,6 @@ Point rayMarch(vec3 ro, vec3 rd, float maxDist) {
   while (dist < maxDist && i < 30) {
     i++;
     g_viewDist = dist;
-    // Formula: Ray equation integration P = ro + rd * dist
     p = map(ro + rd * dist, jShapes, false);
     if (p.dist <= MIN_DIST) {
       if (p.color.w >= 1.0) {
@@ -423,7 +409,6 @@ Point rayMarchShadow(vec3 ro, vec3 rd, float maxDist, int currentShapeId) {
   float t = 0.1;
 
   for (int i = 0; i < 30 && t < maxDist; i++) {
-    // Formula: Position evaluation along shadow ray = ro + rd * t
     Point h = map(ro + rd * t, currentShapeId, true);
 
     if (h.dist < MIN_DIST)
@@ -452,21 +437,15 @@ void camera(vec2 uv, out vec3 ro, out vec3 rd) {
   float hd = -m.x * 14.0 + pi;
   float elv = m.y * pi * 0.4 - pi * 0.25;
   
-  // Formula: Spherical Coordinates to Cartesian coordinates Conversion
   ro = vec3(sin(hd) * cos(elv), sin(elv), cos(hd) * cos(elv));
   ro = ro * 8.0 + vec3(0.0, 6.0, 0.0);
 
-  // Camera coordinate system building
-  // Formula: cw = normalize(target - rayOrigin)
   vec3 cw = normalize(ta - ro);
   vec3 cp = vec3(0.0, 1.0, 0.0);
 
-  // Formula: cu = cross(cw, cp) = [cw.y*cp.z - cw.z*cp.y, cw.z*cp.x - cw.x*cp.z, cw.x*cp.y - cw.y*cp.x]
   vec3 cu = normalize(cross(cw, cp));
-  // Formula: cv = cross(cu, cw)
   vec3 cv = normalize(cross(cu, cw));
   
-  // Formula: Ray direction projection matrix calculation
   rd = normalize(uv.x * cu + uv.y * cv + 2.5 * cw);
 }
 
@@ -480,7 +459,6 @@ vec3 render(vec2 uv) {
   Point p = rayMarch(ro, rd, MAX_DIST);
 
   if (p.dist < MAX_DIST ) {
-    // Formula: Surface Position Vector = ro + rd * distance
     vec3 pos = ro + rd * (p.dist); 
     vec4 baseColor = p.color;
     vec3 normal = getNormal(pos);
@@ -490,22 +468,17 @@ vec3 render(vec2 uv) {
     vec3 lightColor = vec3(1.000, 1.000, 0.900);
     vec3 lightSource = vec3(7., 3.7, 7.);
     
-    // Formula: lightDir = normalize(lightSource - position)
     vec3 lightDir = normalize(lightSource - pos);
 
-    // Formula: Diffuse factor = max(normal · lightDir, 0.0)
     float diffuseStrength = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = lightColor * diffuseStrength;
 
     //specular
     lightColor = vec3(1.000, 1.000, 1.000);
    
-    // Formula: viewDir = normalize(rayOrigin - position)
     vec3 viewDir  = normalize(ro - pos);
-    // Formula: halfwayDir = normalize(lightDir + viewDir)
     vec3 halfwayDir = normalize(lightDir + viewDir);
     
-    // Formula: Blinn-Phong Specular component = (normal · halfwayDir)^shininess
     float specularStrength = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
     vec3 specular = specularStrength * lightColor;
 
@@ -513,10 +486,8 @@ vec3 render(vec2 uv) {
     color = baseColor.rgb * lighting;
 
     //shadows
-    // Formula: Distance between vectors = sqrt(|lightSource - pos|^2)
     float distToLightSource = length(lightSource - pos);
 
-    // Formula: Ray bias offset to avoid surface self-intersection = position + normal * bias
     ro = pos + normal * 0.3;
     rd = lightDir;
     Point pointShadow = rayMarchShadow(ro, rd, distToLightSource, p.shapeId);
@@ -524,7 +495,6 @@ vec3 render(vec2 uv) {
     color = mix(pointShadow.color.rgb * pointShadow.color[3], color * pointShadow.dist, pointShadow.color[3]).rgb;
 
     // Gamma correction
-    // Formula: color = color ^ (1.0 / 2.2)
     color = pow(color, vec3(1.0 / 2.2));
 
   } else {
@@ -537,10 +507,8 @@ vec3 render(vec2 uv) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   float aspectRatio = iResolution.x / iResolution.y;
 
-  // Formula: Normalize coordinates mapping screen coordinates [0, Res] to [-1, 1]
   vec2 uv = 2.0 * fragCoord / iResolution.xy - 1.0;
 
-  // Formula: Aspect adjustment = coordinate.x * (width / height)
   uv.x *= aspectRatio;
 
   vec3 color = vec3(0.0);
